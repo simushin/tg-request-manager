@@ -19,6 +19,64 @@ from app.states import RequestForm
 router = Router()
 
 
+def get_clean_text(message: Message) -> str | None:
+    """
+    Возвращает очищенный текст сообщения.
+    Если пользователь отправил не текст, возвращает None.
+    """
+    if message.text is None:
+        return None
+
+    text = message.text.strip()
+
+    if not text:
+        return None
+
+    return text
+
+
+async def validate_text_input(
+    message: Message,
+    min_length: int,
+    max_length: int,
+    field_name: str,
+) -> str | None:
+    """
+    Проверяет текстовое сообщение пользователя.
+    Возвращает текст, если он корректный.
+    Иначе отправляет пользователю сообщение об ошибке.
+    """
+    text = get_clean_text(message)
+
+    if text is None:
+        await message.answer(
+            f"Пожалуйста, отправьте {field_name} обычным текстом."
+        )
+        return None
+
+    if text.startswith("/"):
+        await message.answer(
+            "Сейчас идет заполнение заявки.\n"
+            "Введите данные текстом или нажмите «Отмена»."
+        )
+        return None
+
+    if len(text) < min_length:
+        await message.answer(
+            f"Слишком коротко. Введите {field_name} еще раз."
+        )
+        return None
+
+    if len(text) > max_length:
+        await message.answer(
+            f"Слишком длинный текст. Максимум символов: {max_length}.\n"
+            f"Введите {field_name} короче."
+        )
+        return None
+
+    return text
+
+
 @router.message(CommandStart())
 async def start_handler(message: Message, state: FSMContext) -> None:
     await state.clear()
@@ -55,10 +113,14 @@ async def start_request_form(message: Message, state: FSMContext) -> None:
 
 @router.message(RequestForm.full_name)
 async def process_full_name(message: Message, state: FSMContext) -> None:
-    full_name = message.text.strip()
+    full_name = await validate_text_input(
+        message=message,
+        min_length=2,
+        max_length=100,
+        field_name="имя",
+    )
 
-    if len(full_name) < 2:
-        await message.answer("Имя слишком короткое. Введите имя еще раз:")
+    if full_name is None:
         return
 
     await state.update_data(full_name=full_name)
@@ -72,10 +134,14 @@ async def process_full_name(message: Message, state: FSMContext) -> None:
 
 @router.message(RequestForm.contact)
 async def process_contact(message: Message, state: FSMContext) -> None:
-    contact = message.text.strip()
+    contact = await validate_text_input(
+        message=message,
+        min_length=3,
+        max_length=100,
+        field_name="контакт",
+    )
 
-    if len(contact) < 3:
-        await message.answer("Контакт слишком короткий. Введите контакт еще раз:")
+    if contact is None:
         return
 
     await state.update_data(contact=contact)
@@ -86,10 +152,14 @@ async def process_contact(message: Message, state: FSMContext) -> None:
 
 @router.message(RequestForm.subject)
 async def process_subject(message: Message, state: FSMContext) -> None:
-    subject = message.text.strip()
+    subject = await validate_text_input(
+        message=message,
+        min_length=3,
+        max_length=150,
+        field_name="тему заявки",
+    )
 
-    if len(subject) < 3:
-        await message.answer("Тема слишком короткая. Введите тему еще раз:")
+    if subject is None:
         return
 
     await state.update_data(subject=subject)
@@ -105,10 +175,14 @@ async def process_request_message(
     bot: Bot,
     config: Config,
 ) -> None:
-    request_message = message.text.strip()
+    request_message = await validate_text_input(
+        message=message,
+        min_length=5,
+        max_length=1000,
+        field_name="описание заявки",
+    )
 
-    if len(request_message) < 5:
-        await message.answer("Описание слишком короткое. Опишите заявку подробнее:")
+    if request_message is None:
         return
 
     data = await state.get_data()
@@ -116,13 +190,25 @@ async def process_request_message(
     username = message.from_user.username
     username_text = f"@{username}" if username else None
 
-    request_id = create_request(
-        username=username_text,
-        full_name=data["full_name"],
-        contact=data["contact"],
-        subject=data["subject"],
-        message=request_message,
-    )
+    try:
+        request_id = create_request(
+            username=username_text,
+            full_name=data["full_name"],
+            contact=data["contact"],
+            subject=data["subject"],
+            message=request_message,
+        )
+    except Exception:
+        logging.exception("Не удалось сохранить заявку в базу данных")
+
+        await message.answer(
+            "Произошла ошибка при сохранении заявки.\n"
+            "Попробуйте отправить заявку позже.",
+            reply_markup=get_main_menu(),
+        )
+
+        await state.clear()
+        return
 
     await state.clear()
 
