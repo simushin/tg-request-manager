@@ -224,31 +224,3 @@ def export_requests_to_csv() -> Path:
             )
 
     return export_path
-
-
-if __name__ == "__main__":
-    init_db()
-
-    request_id = create_request(
-        username="test_user",
-        full_name="Иван Иванов",
-        contact="@test_user",
-        subject="Тестовая заявка",
-        message="Проверка работы базы данных.",
-    )
-
-    print(f"Создана заявка ID: {request_id}")
-
-    request_data = get_request_by_id(request_id)
-    print("Заявка:")
-    print(request_data)
-
-    update_request_status(request_id, "in_work")
-    print("Статус изменен на in_work")
-
-    last_requests = get_last_requests()
-    print("Последние заявки:")
-    print(last_requests)
-
-    csv_path = export_requests_to_csv()
-    print(f"CSV-файл создан: {csv_path}")
