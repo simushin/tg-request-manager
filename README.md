@@ -164,16 +164,25 @@ python scripts/check_db.py
 
 ## Скриншоты
 
-Скриншоты работы бота будут добавлены позже.
+### Стартовое меню
 
-Планируемые скриншоты:
+![Стартовое меню](screenshots/01_start.png)
 
-```text
-screenshots/01_start.png
-screenshots/02_request_form.png
-screenshots/03_admin_notification.png
-screenshots/04_admin_panel.png
-screenshots/05_csv_export.png
+### Форма заявки
+
+![Форма заявки](screenshots/02_request_form.png)
+
+### Уведомление администратора
+
+![Уведомление администратора](screenshots/03_admin_notification.png)
+
+### Админ-панель
+
+![Админ-панель](screenshots/04_admin_panel.png)
+
+### Экспорт CSV
+
+![Экспорт CSV](screenshots/05_csv_export.png)
 ```
 
 ## Что можно доработать
